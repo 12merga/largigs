@@ -54,7 +54,7 @@ Route::get('/listings/{listing}', [ListingController::class, 'show']);
 Route::get('/register', [UserController::class, 'create'])->middleware('guest');
 
 // Create New User
-Route::post('/users', [UserController::class, 'store']);
+Route::post('/users', [UserController::class, 'store'])->middleware('guest');
 
 // Log User Out
 Route::post('/logout', [UserController::class, 'logout'])->middleware('auth');

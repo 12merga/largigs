@@ -6,6 +6,8 @@ use App\Models\Listing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
+
 
 class ListingController extends Controller
 {
@@ -44,7 +46,7 @@ class ListingController extends Controller
             $formFields['logo'] = $request->file('logo')->store('logos', 'public');
         }
 
-        $formFields['user_id'] = auth()->id();
+        $formFields['user_id'] = Auth::id();
 
         Listing::create($formFields);
 
@@ -56,19 +58,18 @@ class ListingController extends Controller
         return view('listings.edit', ['listing' => $listing]);
     }
 
+
     // Update Listing Data
     public function update(Request $request, Listing $listing) {
+
         // Ensure the logged-in user is the owner
-        if ($listing->user_id != auth()->id()) {
+        if ($listing->user_id != Auth::id()) {
             abort(403, 'Unauthorized Action');
         }
 
         $formFields = $request->validate([
             'title' => 'required',
-            'company' => [
-                'required',
-                Rule::unique('listings', 'company')->ignore($listing->id),
-            ],
+            'company' => ['required'],
             'location' => 'required',
             'website' => 'required',
             'email' => ['required', 'email'],
@@ -79,31 +80,43 @@ class ListingController extends Controller
         if ($request->hasFile('logo')) {
             $formFields['logo'] = $request->file('logo')->store('logos', 'public');
         }
+        
+        $formFields['user_id'] = Auth::id();
 
-        $listing->update($formFields);
+       $listing->update($formFields);
 
         return back()->with('message', 'Listing updated successfully!');
     }
 
     // Delete Listing
     public function destroy(Listing $listing) {
-        // Ensure the logged-in user is the owner
-        if ($listing->user_id != auth()->id()) {
+
+        if ($listing->user_id != Auth::id()) {
             abort(403, 'Unauthorized Action');
         }
 
-        // Delete the logo if it exists
+        $listing->delete();
+        return redirect('/')->with('message', 'listing deleted successfully');
+
+           // Delete the logo if it exists
         if ($listing->logo && Storage::disk('public')->exists($listing->logo)) {
             Storage::disk('public')->delete($listing->logo);
         }
 
-        $listing->delete();
 
-        return redirect('/')->with('message', 'Listing deleted successfully!');
     }
 
     // Manage Listings
     public function manage() {
-        return view('listings.manage', ['listings' => auth()->user()->listings()->get()]);
+        // Retrieve listings for the currently authenticated user
+        $user = Auth::user();  // Ensure the user is authenticated
+        if (!$user) {
+            abort(403, 'Unauthorized Action');
+        }
+
+        $listings = $user->listings;  // Directly access the relationship
+
+        return view('listings.manage', ['listings' => $listings]);
     }
+
 }
